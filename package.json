@@ -1,0 +1,29 @@
+{
+  "name": "yt-time",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.ts",
+    "dev": "node build.ts && web-ext run --source-dir dist",
+    "package": "node build.ts && web-ext build --source-dir dist --artifacts-dir artifacts --overwrite-dest && node package-source.ts",
+    "sign": "pnpm package && web-ext sign --source-dir dist --artifacts-dir artifacts --channel unlisted --upload-source-code artifacts/yt-time-source.zip",
+    "test": "node --test 'test/**/*.test.ts'",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "typecheck": "tsc"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/firefox-webext-browser": "^143.0.0",
+    "@types/node": "^26.1.1",
+    "esbuild": "^0.28.1",
+    "oxfmt": "^0.60.0",
+    "oxlint": "^1.75.0",
+    "typescript": "^7.0.2",
+    "web-ext": "^10.5.0"
+  },
+  "packageManager": "pnpm@11.17.0"
+}
