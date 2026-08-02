@@ -30,7 +30,13 @@ export const worthKeeping = (position: number, duration: number): boolean => {
   return position / duration <= MAX_PROGRESS;
 };
 
-export const shouldForget = (position: number, duration: number, msSinceReady: number): boolean => {
+export const shouldForget = (
+  position: number,
+  duration: number,
+  msSinceReady: number,
+  played: boolean,
+): boolean => {
+  if (!played) return false;
   if (worthKeeping(position, duration)) return false;
   return msSinceReady >= FORGET_GRACE_MS;
 };

@@ -17,6 +17,13 @@ let lastSavedAt = 0;
 let restored = false;
 let readyAt = 0;
 let lastKept: Entry | null = null;
+let played = false;
+
+const playable = (element: HTMLVideoElement): boolean =>
+  element.error === null &&
+  element.readyState >= HTMLMediaElement.HAVE_METADATA &&
+  Number.isFinite(element.duration) &&
+  element.duration > 0;
 
 const videoIdFromUrl = (): string | null => new URLSearchParams(location.search).get("v");
 
@@ -43,7 +50,7 @@ const save = async (): Promise<void> => {
   const videoId = currentId;
   if (!videoId) return;
 
-  if (!element || readyAt === 0 || !stillOnCurrentVideo()) {
+  if (!element || readyAt === 0 || !stillOnCurrentVideo() || !playable(element)) {
     await persistKept(videoId);
     return;
   }
@@ -56,7 +63,7 @@ const save = async (): Promise<void> => {
   };
 
   if (!worthKeeping(entry.position, entry.duration)) {
-    if (shouldForget(entry.position, entry.duration, Date.now() - readyAt)) {
+    if (shouldForget(entry.position, entry.duration, Date.now() - readyAt, played)) {
       lastKept = null;
       await forget(videoId);
     }
@@ -91,9 +98,14 @@ const onMediaSwap = (): void => {
   const element = video;
   const videoId = currentId;
   readyAt = 0;
+  played = false;
   if (!element || !videoId) return;
 
   void persistKept(videoId).then(() => rearm(element, videoId));
+};
+
+const onPlaying = (): void => {
+  played = true;
 };
 
 const onEnded = (): void => {
@@ -110,14 +122,17 @@ const restore = async (videoId: string): Promise<void> => {
   const element = video;
   if (!stored || !element || currentId !== videoId) return;
 
-  if (!worthKeeping(stored.position, element.duration || stored.duration)) {
-    await forget(videoId);
+  const ready = playable(element);
+  if (!worthKeeping(stored.position, ready ? element.duration : stored.duration)) {
+    if (ready) await forget(videoId);
     return;
   }
+  lastKept = stored;
+  if (!ready) return;
+
   if (Math.abs(element.currentTime - stored.position) > SEEK_TOLERANCE_SECONDS) {
     element.currentTime = stored.position;
   }
-  lastKept = stored;
   restored = true;
 };
 
@@ -157,6 +172,7 @@ const whenMetadataReady = (element: HTMLVideoElement): Promise<void> =>
 const detach = (): void => {
   if (!video) return;
   video.removeEventListener("timeupdate", onTimeUpdate);
+  video.removeEventListener("playing", onPlaying);
   video.removeEventListener("pause", flush);
   video.removeEventListener("seeked", flush);
   video.removeEventListener("ended", onEnded);
@@ -164,6 +180,7 @@ const detach = (): void => {
   video.removeEventListener("loadstart", onMediaSwap);
   video = null;
   readyAt = 0;
+  played = false;
 };
 
 const attach = async (): Promise<void> => {
@@ -176,6 +193,7 @@ const attach = async (): Promise<void> => {
   restored = false;
   lastSavedAt = 0;
   readyAt = 0;
+  played = false;
   lastKept = null;
 
   const element = await findVideo(videoId);
@@ -190,6 +208,7 @@ const attach = async (): Promise<void> => {
 
   readyAt = Date.now();
   element.addEventListener("timeupdate", onTimeUpdate);
+  element.addEventListener("playing", onPlaying);
   element.addEventListener("pause", flush);
   element.addEventListener("seeked", flush);
   element.addEventListener("ended", onEnded);

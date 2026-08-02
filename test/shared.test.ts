@@ -50,20 +50,26 @@ describe("worthKeeping", () => {
 
 describe("shouldForget", () => {
   it("never forgets a position worth keeping", () => {
-    assert.equal(shouldForget(300, 1200, 60_000), false);
+    assert.equal(shouldForget(300, 1200, 60_000, true), false);
   });
 
   it("holds off during the grace window after load", () => {
-    assert.equal(shouldForget(0, 1200, 0), false);
-    assert.equal(shouldForget(0, 1200, FORGET_GRACE_MS - 1), false);
+    assert.equal(shouldForget(0, 1200, 0, true), false);
+    assert.equal(shouldForget(0, 1200, FORGET_GRACE_MS - 1, true), false);
   });
 
   it("forgets a near-start position once the grace window passes", () => {
-    assert.equal(shouldForget(5, 1200, FORGET_GRACE_MS), true);
+    assert.equal(shouldForget(5, 1200, FORGET_GRACE_MS, true), true);
   });
 
   it("forgets a near-end position once the grace window passes", () => {
-    assert.equal(shouldForget(1190, 1200, 60_000), true);
+    assert.equal(shouldForget(1190, 1200, 60_000, true), true);
+  });
+
+  it("never forgets when playback never started", () => {
+    assert.equal(shouldForget(0, 1200, 60_000, false), false);
+    assert.equal(shouldForget(0, Number.NaN, 60_000, false), false);
+    assert.equal(shouldForget(1190, 1200, 60_000, false), false);
   });
 });
 
