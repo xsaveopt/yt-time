@@ -61,4 +61,4 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" artifacts/*.xpi artifacts/*-source.zip --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" artifacts/*.xpi --generate-notes
