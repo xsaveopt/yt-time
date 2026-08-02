@@ -46,7 +46,7 @@ jobs:
       - name: Package extension
         run: pnpm package
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: yt-time-extension
           path: artifacts/*.zip
