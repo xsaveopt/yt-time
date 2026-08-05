@@ -31,15 +31,6 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Check tag matches package version
-        run: |
-          tag="${GITHUB_REF_NAME#v}"
-          pkg="$(node -p "require('./package.json').version")"
-          if [ "$tag" != "$pkg" ]; then
-            echo "tag $tag does not match package.json version $pkg" >&2
-            exit 1
-          fi
-
       - name: Lint
         run: pnpm lint
 
@@ -54,6 +45,7 @@ jobs:
 
       - name: Sign with AMO
         env:
+          RELEASE_TAG: ${{ github.ref_name }}
           WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
           WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
         run: pnpm sign

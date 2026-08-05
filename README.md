@@ -54,17 +54,3 @@ The checks that CI runs are the same ones you can run locally:
 ```sh
 pnpm lint && pnpm fmt:check && pnpm typecheck && pnpm test
 ```
-
-## Cutting a release
-
-Signing happens through Mozilla's add-ons API, so the repository needs two secrets, AMO_JWT_ISSUER and AMO_JWT_SECRET, which come from the API credentials page under your Mozilla add-ons developer account.
-With those in place, bump the version in package.json, commit it, and push a matching v1.2.3 tag.
-
-The release workflow runs the same checks as CI, refuses to continue if the tag and the version in package.json disagree, sends the build to AMO for signing, and attaches the signed .xpi to a GitHub release.
-The manifest takes its version from package.json during the build, so that one field is the only place a version number lives, and AMO rejects a version it has already seen.
-
-You can also sign from your machine when the credentials are exported as WEB_EXT_API_KEY and WEB_EXT_API_SECRET:
-
-```sh
-pnpm sign
-```

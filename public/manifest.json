@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "yt-time",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "Remembers where you left off in a YouTube video, no account needed.",
   "browser_specific_settings": {
     "gecko": {
