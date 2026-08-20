@@ -9,6 +9,7 @@ import {
   isStale,
   shouldForget,
   videoIdFromKey,
+  videoIdFromUrl,
   worthKeeping,
 } from "../src/shared.ts";
 import type { Entry } from "../src/shared.ts";
@@ -113,5 +114,28 @@ describe("keys", () => {
 
   it("ignores non-entry keys", () => {
     assert.equal(isEntryKey("meta:lastCleanup"), false);
+  });
+});
+
+describe("videoIdFromUrl", () => {
+  it("reads the id from a watch url", () => {
+    assert.equal(videoIdFromUrl("https://www.youtube.com/watch?v=abc123&t=90s"), "abc123");
+  });
+
+  it("accepts other youtube subdomains", () => {
+    assert.equal(videoIdFromUrl("https://m.youtube.com/watch?v=abc123"), "abc123");
+  });
+
+  it("ignores non-watch pages", () => {
+    assert.equal(videoIdFromUrl("https://www.youtube.com/feed/subscriptions"), null);
+  });
+
+  it("ignores lookalike hosts", () => {
+    assert.equal(videoIdFromUrl("https://notyoutube.com/watch?v=abc123"), null);
+  });
+
+  it("ignores missing or malformed input", () => {
+    assert.equal(videoIdFromUrl(undefined), null);
+    assert.equal(videoIdFromUrl("watch?v=abc123"), null);
   });
 });

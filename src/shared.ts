@@ -53,10 +53,39 @@ export const formatClock = (seconds: number): string => {
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(rest)}` : `${minutes}:${pad(rest)}`;
 };
 
+export const videoIdFromUrl = (url: string | undefined): string | null => {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (!/(^|\.)youtube\.com$/.test(parsed.hostname)) return null;
+    if (parsed.pathname !== "/watch") return null;
+    return parsed.searchParams.get("v");
+  } catch {
+    return null;
+  }
+};
+
 export const readEntries = async (): Promise<Array<Entry & { id: string }>> => {
   const all = await browser.storage.local.get(null);
   return Object.entries(all)
     .filter(([key]) => isEntryKey(key))
     .map(([key, value]) => ({ id: videoIdFromKey(key), ...(value as Entry) }))
     .sort((a, b) => (b.updated ?? 0) - (a.updated ?? 0));
+};
+
+export type OpenTab = { tabId: number; windowId: number };
+
+export const readOpenTabs = async (): Promise<Map<string, OpenTab>> => {
+  const open = new Map<string, OpenTab>();
+  try {
+    const tabs = await browser.tabs.query({ url: "*://*.youtube.com/watch*" });
+    for (const tab of tabs) {
+      const id = videoIdFromUrl(tab.url);
+      if (id === null || tab.id === undefined || open.has(id)) continue;
+      open.set(id, { tabId: tab.id, windowId: tab.windowId ?? browser.windows.WINDOW_ID_CURRENT });
+    }
+  } catch {
+    return open;
+  }
+  return open;
 };
