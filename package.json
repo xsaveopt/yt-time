@@ -18,10 +18,10 @@
   "dependencies": {},
   "devDependencies": {
     "@types/firefox-webext-browser": "^143.0.0",
-    "@types/node": "^26.1.2",
-    "esbuild": "^0.28.1",
-    "oxfmt": "^0.62.0",
-    "oxlint": "^1.77.0",
+    "@types/node": "^26.2.0",
+    "esbuild": "^0.28.2",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.79.0",
     "typescript": "^7.0.2",
     "web-ext": "^10.6.0"
   },
