@@ -1,5 +1,9 @@
 export const KEY_PREFIX = "v:";
 export const CLEANUP_KEY = "meta:lastCleanup";
+export const SETTINGS_KEY = "meta:settings";
+
+export const QUALITY_CHANGE_EVENT = "yt-time:quality-change";
+export const QUALITY_SET_EVENT = "yt-time:quality-set";
 
 export const MIN_POSITION_SECONDS = 60;
 export const MIN_REMAINING_SECONDS = 90;
@@ -15,6 +19,13 @@ export type Entry = {
   duration: number;
   title: string;
   updated: number;
+};
+
+export type Settings = {
+  autoplay?: boolean;
+  captions?: boolean;
+  playbackRate?: number;
+  quality?: string;
 };
 
 export const entryKey = (videoId: string): string => `${KEY_PREFIX}${videoId}`;
@@ -72,6 +83,9 @@ export const readEntries = async (): Promise<Array<Entry & { id: string }>> => {
     .map(([key, value]) => ({ id: videoIdFromKey(key), ...(value as Entry) }))
     .sort((a, b) => (b.updated ?? 0) - (a.updated ?? 0));
 };
+
+export const readSettings = async (): Promise<Settings> =>
+  ((await browser.storage.local.get(SETTINGS_KEY))[SETTINGS_KEY] as Settings | undefined) ?? {};
 
 export type OpenTab = { tabId: number; windowId: number };
 

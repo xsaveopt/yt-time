@@ -25,6 +25,12 @@ Reaching the end of a video clears its entry too, and anything untouched for 30 
 
 A link that already carries an explicit start time (the t or start parameter you get from "copy link at current time") is left alone, since you asked for that position on purpose.
 
+## Remembered playback settings
+
+Autoplay, captions, playback speed, and quality follow you between videos too.
+Whichever value you last set for each one is kept locally and reapplied the next time a video loads, so switching a video to 1.5x or turning captions on only has to happen once.
+These are stored separately from the saved positions and apply across every video rather than to one in particular.
+
 ## The toolbar popup
 
 Clicking the toolbar button lists everything currently remembered, newest first, with the saved position against the total length.
