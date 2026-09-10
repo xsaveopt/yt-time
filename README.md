@@ -3,7 +3,7 @@
 Watching YouTube without an account means YouTube never remembers where you left off, so a refresh, a crashed tab, or one of those "confirm you're not a bot" interruptions drops you back at the beginning of whatever you were watching.
 yt-time is a Firefox extension that keeps that position for you, locally, and puts you back where you were the next time the video opens.
 
-It stores a timestamp per video id rather than per tab, which is what makes it survive a reload or a fresh tab on the same link.
+It stores a timestamp per video id rather than per tab, so a reload, or a second tab opened on the same link, picks up from the same spot.
 Positions are written to the browser's own extension storage, so nothing leaves the machine and no account is involved anywhere.
 
 ## Installing
@@ -23,13 +23,11 @@ A position is only worth keeping in the middle of a video, so anything under a m
 In both cases the entry is deleted instead of saved, which also means a short clip never accumulates an entry at all.
 Reaching the end of a video clears its entry too, and anything untouched for 30 days is swept away by a cleanup pass that runs at most twice a day.
 
+A position is only kept while its video is open somewhere, so closing the tab, or moving that tab on to another video or page, forgets it unless another tab still has the same video open.
+Quitting Firefox is treated differently, and every position that was open at the time is still there when the browser starts again, whether or not the session brings those tabs back.
+Closing one window while others stay open counts as closing its tabs, while closing the last window counts as quitting.
+
 A link that already carries an explicit start time (the t or start parameter you get from "copy link at current time") is left alone, since you asked for that position on purpose.
-
-## Remembered playback settings
-
-Autoplay, captions, playback speed, and quality follow you between videos too.
-Whichever value you last set for each one is kept locally and reapplied the next time a video loads, so switching a video to 1.5x or turning captions on only has to happen once.
-These are stored separately from the saved positions and apply across every video rather than to one in particular.
 
 ## The toolbar popup
 

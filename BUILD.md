@@ -26,7 +26,7 @@ pnpm exec web-ext build --source-dir dist --artifacts-dir artifacts --overwrite-
 
 1. Copies `public/` (`manifest.json`, `popup.html`, `popup.css`, `icon.svg`) into `dist/`.
 2. Sets the manifest `version` field from the git tag, taken from `RELEASE_TAG` when the release workflow sets it and otherwise from `git describe` against the most recent `v*.*.*` tag, falling back to `0.0.0` on an untagged checkout.
-3. Runs esbuild on `src/content.ts` and `src/popup.ts`, inlining the shared module `src/shared.ts` into each, emitting `dist/content.js` and `dist/popup.js` as unminified IIFE bundles with no source maps (`minify: false`).
+3. Runs esbuild on `src/background.ts`, `src/content.ts` and `src/popup.ts`, inlining the shared module `src/shared.ts` into each, emitting `dist/background.js`, `dist/content.js` and `dist/popup.js` as unminified IIFE bundles with no source maps (`minify: false`).
 
 esbuild is the only build dependency. The extension has no runtime dependencies. Everything shipped comes from `src/` and `public/`.
 

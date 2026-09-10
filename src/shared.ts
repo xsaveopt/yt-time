@@ -1,9 +1,6 @@
 export const KEY_PREFIX = "v:";
 export const CLEANUP_KEY = "meta:lastCleanup";
-export const SETTINGS_KEY = "meta:settings";
-
-export const QUALITY_CHANGE_EVENT = "yt-time:quality-change";
-export const QUALITY_SET_EVENT = "yt-time:quality-set";
+export const WATCH_URL_PATTERN = "*://*.youtube.com/watch*";
 
 export const MIN_POSITION_SECONDS = 60;
 export const MIN_REMAINING_SECONDS = 90;
@@ -13,19 +10,13 @@ export const SAVE_INTERVAL_MS = 2000;
 export const FORGET_GRACE_MS = 3000;
 export const ENTRY_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const CLEANUP_INTERVAL_MS = 12 * 60 * 60 * 1000;
+export const WINDOW_CLOSE_GRACE_MS = 5000;
 
 export type Entry = {
   position: number;
   duration: number;
   title: string;
   updated: number;
-};
-
-export type Settings = {
-  autoplay?: boolean;
-  captions?: boolean;
-  playbackRate?: number;
-  quality?: string;
 };
 
 export const entryKey = (videoId: string): string => `${KEY_PREFIX}${videoId}`;
@@ -84,15 +75,12 @@ export const readEntries = async (): Promise<Array<Entry & { id: string }>> => {
     .sort((a, b) => (b.updated ?? 0) - (a.updated ?? 0));
 };
 
-export const readSettings = async (): Promise<Settings> =>
-  ((await browser.storage.local.get(SETTINGS_KEY))[SETTINGS_KEY] as Settings | undefined) ?? {};
-
 export type OpenTab = { tabId: number; windowId: number };
 
 export const readOpenTabs = async (): Promise<Map<string, OpenTab>> => {
   const open = new Map<string, OpenTab>();
   try {
-    const tabs = await browser.tabs.query({ url: "*://*.youtube.com/watch*" });
+    const tabs = await browser.tabs.query({ url: WATCH_URL_PATTERN });
     for (const tab of tabs) {
       const id = videoIdFromUrl(tab.url);
       if (id === null || tab.id === undefined || open.has(id)) continue;

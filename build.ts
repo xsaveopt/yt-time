@@ -40,9 +40,9 @@ await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 await build({
   entryPoints: [
+    join(root, "src/background.ts"),
     join(root, "src/content.ts"),
     join(root, "src/popup.ts"),
-    join(root, "src/inject.ts"),
   ],
   outdir,
   bundle: true,

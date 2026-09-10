@@ -19,19 +19,15 @@
   },
   "permissions": ["storage"],
   "host_permissions": ["*://*.youtube.com/*"],
+  "background": {
+    "scripts": ["background.js"]
+  },
   "content_scripts": [
     {
       "matches": ["*://*.youtube.com/watch*"],
       "js": ["content.js"],
       "run_at": "document_start",
       "all_frames": false
-    },
-    {
-      "matches": ["*://*.youtube.com/watch*"],
-      "js": ["inject.js"],
-      "run_at": "document_idle",
-      "all_frames": false,
-      "world": "MAIN"
     }
   ],
   "action": {
