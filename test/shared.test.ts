@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { beforeEach, describe, it } from "node:test";
 import {
   entryKey,
   ENTRY_TTL_MS,
@@ -7,12 +7,17 @@ import {
   formatClock,
   isEntryKey,
   isStale,
+  readEntries,
+  readOpenTabs,
   shouldForget,
   videoIdFromKey,
   videoIdFromUrl,
   worthKeeping,
 } from "../src/shared.ts";
 import type { Entry } from "../src/shared.ts";
+import { installBrowser } from "./fake-browser.ts";
+import type { FakeBrowser } from "./fake-browser.ts";
+import { watchUrl } from "./harness.ts";
 
 const entry = (updated: number): Entry => ({
   position: 300,
@@ -137,5 +142,81 @@ describe("videoIdFromUrl", () => {
   it("ignores missing or malformed input", () => {
     assert.equal(videoIdFromUrl(undefined), null);
     assert.equal(videoIdFromUrl("watch?v=abc123"), null);
+  });
+});
+
+describe("readEntries", () => {
+  let api: FakeBrowser;
+
+  beforeEach(() => {
+    api = installBrowser();
+  });
+
+  it("returns entries newest first with the id attached", async () => {
+    api.storage.local.seed({
+      "v:older": { ...entry(100), title: "older" },
+      "v:newer": { ...entry(200), title: "newer" },
+      "meta:lastCleanup": 1234,
+    });
+
+    const entries = await readEntries();
+
+    assert.deepEqual(
+      entries.map((item) => item.id),
+      ["newer", "older"],
+    );
+    assert.equal(entries[0]?.title, "newer");
+    assert.equal(entries[0]?.position, 300);
+  });
+
+  it("returns nothing when storage holds no entries", async () => {
+    api.storage.local.seed({ "meta:lastCleanup": 1234 });
+    assert.deepEqual(await readEntries(), []);
+  });
+});
+
+describe("readOpenTabs", () => {
+  let api: FakeBrowser;
+
+  beforeEach(() => {
+    api = installBrowser();
+  });
+
+  it("maps each open watch tab to its tab and window", async () => {
+    api.tabs.records.push(
+      { id: 7, url: watchUrl("abc"), windowId: 3 },
+      { id: 8, url: "https://www.youtube.com/feed/subscriptions", windowId: 3 },
+    );
+
+    const open = await readOpenTabs();
+
+    assert.deepEqual(open.get("abc"), { tabId: 7, windowId: 3 });
+    assert.equal(open.size, 1);
+  });
+
+  it("keeps the first tab when the same video is open twice", async () => {
+    api.tabs.records.push(
+      { id: 7, url: watchUrl("abc"), windowId: 3 },
+      { id: 9, url: `${watchUrl("abc")}&t=30s`, windowId: 4 },
+    );
+
+    const open = await readOpenTabs();
+
+    assert.deepEqual(open.get("abc"), { tabId: 7, windowId: 3 });
+  });
+
+  it("falls back to the current window when a tab reports none", async () => {
+    api.tabs.records.push({ id: 7, url: watchUrl("abc") });
+
+    const open = await readOpenTabs();
+
+    assert.deepEqual(open.get("abc"), { tabId: 7, windowId: api.windows.WINDOW_ID_CURRENT });
+  });
+
+  it("returns an empty map when the tabs query fails", async () => {
+    api.tabs.records.push({ id: 7, url: watchUrl("abc"), windowId: 3 });
+    api.tabs.queryError = new Error("no permission");
+
+    assert.equal((await readOpenTabs()).size, 0);
   });
 });
