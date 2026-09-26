@@ -160,3 +160,22 @@ describe("removal", () => {
     assert.equal(empty.hidden, false);
   });
 });
+
+describe("meta without duration", () => {
+  it("shows only the position when the duration is zero", async () => {
+    api.storage.local.seed({ [entryKey("abc")]: { ...stored(300, "Video", 1), duration: 0 } });
+
+    await open();
+
+    assert.equal(parts(rows()[0] as FakeElement).link.children[1]?.textContent, "5:00");
+  });
+
+  it("shows only the position when the duration is missing", async () => {
+    const { duration: _duration, ...partial } = stored(3725, "Video", 1);
+    api.storage.local.seed({ [entryKey("abc")]: partial });
+
+    await open();
+
+    assert.equal(parts(rows()[0] as FakeElement).link.children[1]?.textContent, "1:02:05");
+  });
+});

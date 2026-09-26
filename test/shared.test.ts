@@ -4,6 +4,9 @@ import {
   entryKey,
   ENTRY_TTL_MS,
   FORGET_GRACE_MS,
+  MAX_PROGRESS,
+  MIN_POSITION_SECONDS,
+  MIN_REMAINING_SECONDS,
   formatClock,
   isEntryKey,
   isStale,
@@ -112,9 +115,9 @@ describe("formatClock", () => {
 
 describe("keys", () => {
   it("round-trips a video id", () => {
-    const key = entryKey("dQw4w9WgXcQ");
+    const key = entryKey("Ab3_cD-4eFg");
     assert.equal(isEntryKey(key), true);
-    assert.equal(videoIdFromKey(key), "dQw4w9WgXcQ");
+    assert.equal(videoIdFromKey(key), "Ab3_cD-4eFg");
   });
 
   it("ignores non-entry keys", () => {
@@ -218,5 +221,101 @@ describe("readOpenTabs", () => {
     api.tabs.queryError = new Error("no permission");
 
     assert.equal((await readOpenTabs()).size, 0);
+  });
+});
+
+describe("worthKeeping boundaries", () => {
+  it("keeps a position exactly at the minimum", () => {
+    assert.equal(worthKeeping(MIN_POSITION_SECONDS, 1200), true);
+    assert.equal(worthKeeping(MIN_POSITION_SECONDS - 0.01, 1200), false);
+  });
+
+  it("keeps a position with exactly the minimum time remaining", () => {
+    assert.equal(worthKeeping(1200 - MIN_REMAINING_SECONDS, 1200), true);
+    assert.equal(worthKeeping(1200 - MIN_REMAINING_SECONDS + 0.01, 1200), false);
+  });
+
+  it("keeps a position exactly at the progress ceiling", () => {
+    assert.equal(worthKeeping(10000 * MAX_PROGRESS, 10000), true);
+    assert.equal(worthKeeping(10000 * MAX_PROGRESS + 1, 10000), false);
+  });
+
+  it("drops a negative duration and a non-finite position", () => {
+    assert.equal(worthKeeping(300, -1200), false);
+    assert.equal(worthKeeping(Number.POSITIVE_INFINITY, 1200), false);
+  });
+});
+
+describe("isStale boundaries", () => {
+  const now = 1_700_000_000_000;
+
+  it("keeps an entry exactly at the ttl", () => {
+    assert.equal(isStale(entry(now - ENTRY_TTL_MS), now), false);
+  });
+});
+
+describe("formatClock boundaries", () => {
+  it("floors fractional seconds", () => {
+    assert.equal(formatClock(59.9), "0:59");
+  });
+
+  it("rolls over to hours at exactly one hour", () => {
+    assert.equal(formatClock(3600), "1:00:00");
+    assert.equal(formatClock(3599), "59:59");
+  });
+});
+
+describe("videoIdFromUrl edge cases", () => {
+  it("accepts the bare domain and plain http", () => {
+    assert.equal(videoIdFromUrl("http://youtube.com/watch?v=abc123"), "abc123");
+  });
+
+  it("accepts an uppercase host", () => {
+    assert.equal(videoIdFromUrl("https://WWW.YOUTUBE.COM/watch?v=abc123"), "abc123");
+  });
+
+  it("returns null when the watch url has no video id", () => {
+    assert.equal(videoIdFromUrl("https://www.youtube.com/watch"), null);
+    assert.equal(videoIdFromUrl("https://www.youtube.com/watch?list=abc123"), null);
+  });
+
+  it("returns null when the video id is empty", () => {
+    assert.equal(videoIdFromUrl("https://www.youtube.com/watch?v="), null);
+  });
+
+  it("ignores a host that only starts with youtube.com", () => {
+    assert.equal(videoIdFromUrl("https://youtube.com.example.test/watch?v=abc123"), null);
+  });
+
+  it("ignores paths that only resemble the watch page", () => {
+    assert.equal(videoIdFromUrl("https://www.youtube.com/watch/abc123"), null);
+    assert.equal(videoIdFromUrl("https://www.youtube.com/shorts/abc123"), null);
+  });
+
+  it("takes the first id when the parameter repeats", () => {
+    assert.equal(videoIdFromUrl("https://www.youtube.com/watch?v=abc123&v=def456"), "abc123");
+  });
+});
+
+describe("readEntries ordering", () => {
+  let api: FakeBrowser;
+
+  beforeEach(() => {
+    api = installBrowser();
+  });
+
+  it("puts entries without an updated time last", async () => {
+    const { updated: _updated, ...undated } = entry(0);
+    api.storage.local.seed({
+      "v:undated": undated,
+      "v:dated": entry(100),
+    });
+
+    const entries = await readEntries();
+
+    assert.deepEqual(
+      entries.map((item) => item.id),
+      ["dated", "undated"],
+    );
   });
 });

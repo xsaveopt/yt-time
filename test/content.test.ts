@@ -390,3 +390,214 @@ describe("cleanup", () => {
     assert.equal(entryFor("old")?.position, 300);
   });
 });
+
+describe("navigation flush", () => {
+  it("writes the last kept position for the video being left", async () => {
+    const first = player();
+    dom.document.video = first;
+    await boot(watchUrl("abc"));
+
+    first.emit("playing");
+    first.currentTime = 300;
+    first.emit("pause");
+    await settle();
+    api.storage.local.data.delete(entryKey("abc"));
+
+    first.currentTime = 450;
+    const second = player({ duration: 2400 });
+    dom.document.video = second;
+    dom.setUrl(watchUrl("def"));
+    dom.document.emit("yt-navigate-finish");
+    await settle();
+
+    assert.equal(entryFor("abc")?.position, 300);
+    assert.equal(entryFor("def"), undefined);
+  });
+
+  it("writes nothing when the video being left had nothing worth keeping", async () => {
+    const first = player();
+    dom.document.video = first;
+    await boot(watchUrl("abc"));
+
+    first.emit("playing");
+    first.currentTime = 30;
+    first.emit("pause");
+    await settle();
+
+    dom.document.video = player({ duration: 2400 });
+    dom.setUrl(watchUrl("def"));
+    dom.document.emit("yt-navigate-finish");
+    await settle();
+
+    assert.equal(entryFor("abc"), undefined);
+    assert.equal(entryFor("def"), undefined);
+  });
+
+  it("does not carry the previous video's position over to the next one", async () => {
+    const first = player();
+    dom.document.video = first;
+    await boot(watchUrl("abc"));
+
+    first.emit("playing");
+    first.currentTime = 300;
+    first.emit("pause");
+    await settle();
+
+    const second = player({ duration: 2400 });
+    dom.document.video = second;
+    dom.setUrl(watchUrl("def"));
+    dom.document.emit("yt-navigate-finish");
+    await settle();
+
+    second.error = { code: 2 };
+    second.emit("pause");
+    await settle();
+
+    assert.equal(entryFor("def"), undefined);
+  });
+});
+
+describe("kept position while the player is not ready", () => {
+  it("holds the stored position until metadata times out and writes it back", async () => {
+    const video = player({ readyState: 0, duration: Number.NaN });
+    dom.document.video = video;
+    api.storage.local.seed({ [entryKey("abc")]: stored(300) });
+    await boot(watchUrl("abc"));
+
+    clock.advance(15000);
+    await settle();
+    assert.equal(video.currentTime, 0);
+
+    api.storage.local.data.delete(entryKey("abc"));
+    video.emit("pause");
+    await settle();
+
+    assert.deepEqual(entryFor("abc"), stored(300));
+  });
+
+  it("starts saving once metadata arrives after the timeout", async () => {
+    const video = player({ readyState: 0, duration: Number.NaN });
+    dom.document.video = video;
+    await boot(watchUrl("abc"));
+
+    clock.advance(15000);
+    await settle();
+
+    video.readyState = 1;
+    video.duration = 1200;
+    video.currentTime = 400;
+    video.emit("pause");
+    await settle();
+
+    assert.equal(entryFor("abc")?.position, 400);
+  });
+
+  it("does not seek or forget when the player reports an error", async () => {
+    const video = player();
+    video.error = { code: 3 };
+    dom.document.video = video;
+    api.storage.local.seed({ [entryKey("abc")]: stored(300) });
+
+    await boot(watchUrl("abc"));
+
+    assert.equal(video.currentTime, 0);
+    assert.equal(entryFor("abc")?.position, 300);
+  });
+
+  it("keeps the last good position once the player errors", async () => {
+    const video = player();
+    dom.document.video = video;
+    await boot(watchUrl("abc"));
+
+    video.emit("playing");
+    video.currentTime = 300;
+    video.emit("pause");
+    await settle();
+
+    video.error = { code: 3 };
+    video.currentTime = 600;
+    video.emit("pause");
+    await settle();
+
+    assert.equal(entryFor("abc")?.position, 300);
+  });
+});
+
+describe("guards", () => {
+  it("ignores an ended event that fires after the url moved on", async () => {
+    const video = player();
+    dom.document.video = video;
+    api.storage.local.seed({ [entryKey("abc")]: stored(300) });
+    await boot(watchUrl("abc"));
+
+    dom.setUrl(watchUrl("def"));
+    video.emit("ended");
+    await settle();
+
+    assert.equal(entryFor("abc")?.position, 300);
+  });
+
+  it("does not save the new video's time under the old id before the poll notices", async () => {
+    const video = player();
+    dom.document.video = video;
+    await boot(watchUrl("abc"));
+
+    video.emit("playing");
+    video.currentTime = 300;
+    video.emit("pause");
+    await settle();
+
+    dom.setUrl(watchUrl("def"));
+    video.currentTime = 700;
+    video.emit("pause");
+    await settle();
+
+    assert.equal(entryFor("abc")?.position, 300);
+  });
+
+  it("abandons the player search for a video the page has left", async () => {
+    await boot(watchUrl("abc"));
+    assert.equal(clock.timers.length, 1);
+
+    const video = player({ duration: 2400 });
+    api.storage.local.seed({ [entryKey("def")]: stored(900, 2400) });
+    dom.document.video = video;
+    dom.setUrl(watchUrl("def"));
+    dom.document.emit("yt-navigate-finish");
+    await settle();
+
+    clock.advance(250);
+    await settle();
+
+    assert.equal(video.currentTime, 900);
+    assert.equal(clock.timers.length, 0);
+    assert.equal(entryFor("abc"), undefined);
+  });
+
+  it("stays disarmed when the url changes while a new source loads", async () => {
+    const video = player();
+    dom.document.video = video;
+    await boot(watchUrl("abc"));
+
+    video.emit("playing");
+    video.currentTime = 300;
+    video.emit("pause");
+    await settle();
+
+    video.readyState = 0;
+    video.emit("emptied");
+    await settle();
+
+    dom.setUrl(watchUrl("def"));
+    video.readyState = 1;
+    video.emit("loadedmetadata");
+    await settle();
+
+    dom.setUrl(watchUrl("abc"));
+    video.currentTime = 600;
+    video.emit("pause");
+    await settle();
+
+    assert.equal(entryFor("abc")?.position, 300);
+  });
+});
