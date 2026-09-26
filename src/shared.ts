@@ -61,7 +61,7 @@ export const videoIdFromUrl = (url: string | undefined): string | null => {
     const parsed = new URL(url);
     if (!/(^|\.)youtube\.com$/.test(parsed.hostname)) return null;
     if (parsed.pathname !== "/watch") return null;
-    return parsed.searchParams.get("v");
+    return parsed.searchParams.get("v") || null;
   } catch {
     return null;
   }
